@@ -7,14 +7,27 @@ if len(sys.argv) > 1:
 else:
     address = '192.168.0.99'
 
+ifm_app_name = "o3d3xx-python example extrinsic calibration"
 # create device
-device = o3d3xx.Device(address)
+ifm_device = o3d3xx.Device(address)
+
+# Try to find our ifm application on device; if it's not there, we're going to install it.
+ifm_app_index = None
+ifm_apps = ifm_device.rpc.getApplicationList()
+for i, ifm_app in enumerate(ifm_apps, start=1):
+    if ifm_app['Name'] == ifm_app_name:
+        print(f'ifm application found on camera: {ifm_app_name}')
+        ifm_app_index = i
+        break
 
 # open a session and create an application for editing
-session = device.requestSession()
+session = ifm_device.requestSession()
 session.startEdit()
-applicationIndex = session.edit.createApplication()
-application = session.edit.editApplication(applicationIndex)
+
+if not ifm_app_index:
+    ifm_app_index = session.edit.createApplication()
+
+application = session.edit.editApplication(ifm_app_index)
 
 # configure the application to
 # - double exposure
@@ -33,16 +46,17 @@ application.setParameter("Name", "o3d3xx-python example extrinsic calibration")
 application.save()
 session.edit.stopEditingApplication()
 
-# set extrinsic calibration parameters
-session.edit.device.setParameter("ExtrinsicCalibTransX", 0.0)  # mm
-session.edit.device.setParameter("ExtrinsicCalibTransY", 0.0)  # mm
-session.edit.device.setParameter("ExtrinsicCalibTransZ", 2530.0)  # mm
-session.edit.device.setParameter("ExtrinsicCalibRotX", 6.32)  # degree
-session.edit.device.setParameter("ExtrinsicCalibRotY", 5.11)  # degree
-session.edit.device.setParameter("ExtrinsicCalibRotZ", 25.75)  # degree
+# translation in [mm]
+session.edit.device.setParameter('ExtrinsicCalibTransX', '42.1')
+session.edit.device.setParameter('ExtrinsicCalibTransY', '44.2')
+session.edit.device.setParameter('ExtrinsicCalibTransZ', '2246.3')
+# rotation in [degree]
+session.edit.device.setParameter('ExtrinsicCalibRotX', '5.6')
+session.edit.device.setParameter('ExtrinsicCalibRotY', '7.8')
+session.edit.device.setParameter('ExtrinsicCalibRotZ', '9.1')
 
 # set the new application as active and save the change
-session.edit.device.setParameter("ActiveApplication", str(applicationIndex))
+session.edit.device.setParameter("ActiveApplication", str(ifm_app_index))
 session.edit.device.save()
 
 # finish the session
@@ -55,6 +69,33 @@ device = o3d3xx.ImageClient(address=address, port=50010)
 device.sendCommand(cmd="t")
 # read frames
 frames = device.readNextFrame()
-# print unit vector matrix
-unit_vector_matrix = frames["unitVectorMatrix"]
-print(unit_vector_matrix)
+
+test = frames['extrinsicCalibration']
+tX = frames['extrinsicCalibration'].transX
+tY = frames['extrinsicCalibration'].transY
+tZ = frames['extrinsicCalibration'].transZ
+
+# calculate the X,Y,Z coordinates and compare them to the sensor X,Y,Z
+dist = frames['distance']
+unitVec = frames['unitVectors']
+sensorX = frames['x']
+sensorY = frames['y']
+sensorZ = frames['z']
+
+for pixIdx in range(len(dist)):
+    x = 0
+    y = 0
+    z = 0
+    if dist[pixIdx] != 0:  # only for valid values
+        x = round(unitVec[pixIdx*3+0] * dist[pixIdx] + tX)
+        y = round(unitVec[pixIdx*3+1] * dist[pixIdx] + tY)
+        z = round(unitVec[pixIdx*3+2] * dist[pixIdx] + tZ)
+
+    # Test the cartesian values for similarity.
+    # We do not expect exact equality due to round off
+    # errors.
+    assert(abs(sensorX[pixIdx]-x) <= 1 and
+           abs(sensorY[pixIdx]-y) <= 1 and
+           abs(sensorZ[pixIdx]-z) <= 1)
+
+print("Test passed")

@@ -102,8 +102,9 @@ class ImageClient(PCICV3Client):
 					image = array.array('f', bytes(data))
 				elif pixelFormat == 8:
 					image = array.array('d', bytes(data))
-				elif pixelFormat == 10:
-					image = array.array('i', bytes(data))
+				elif pixelFormat == 10:  # special format for 3*float32
+					image = array.array('f', bytes(data))
+
 				else:
 					image = None
 
@@ -137,7 +138,7 @@ class ImageClient(PCICV3Client):
 
 				# unit vector matrix
 				elif chunkType == 223:
-					result['unitVectorMatrix'] = image
+					result['unitVectors'] = image
 
 				# confidence image
 				elif chunkType == 300:
