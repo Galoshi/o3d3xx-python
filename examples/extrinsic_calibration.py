@@ -49,7 +49,7 @@ session.edit.stopEditingApplication()
 # translation in [mm]
 session.edit.device.setParameter('ExtrinsicCalibTransX', '42.1')
 session.edit.device.setParameter('ExtrinsicCalibTransY', '44.2')
-session.edit.device.setParameter('ExtrinsicCalibTransZ', '2246.3')
+session.edit.device.setParameter('ExtrinsicCalibTransZ', '46.3')
 # rotation in [degree]
 session.edit.device.setParameter('ExtrinsicCalibRotX', '5.6')
 session.edit.device.setParameter('ExtrinsicCalibRotY', '7.8')
